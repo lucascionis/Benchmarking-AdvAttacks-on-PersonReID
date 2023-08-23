@@ -1,3 +1,1 @@
-/models/densenet121/**
-/models/hacnn/**
-/models/ide/**
+.pth.tar
