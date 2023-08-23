@@ -142,6 +142,8 @@ def main(opt):
     target_net = nn.DataParallel(target_net).cuda() 
     G = nn.DataParallel(G).cuda()
     D = nn.DataParallel(D).cuda()
+  else:
+    test_target_net = target_net
 
   if args.mode == 'test':
     epoch = 'test'
@@ -192,12 +194,13 @@ def train(epoch, G, D, target_net, criterionGAN, clf_criterion, metric_criterion
   is_training = True
 
   for batch_idx, (imgs, pids, _, pids_raw) in enumerate(trainloader):
-    if use_gpu: 
+    if use_gpu:
       imgs, pids, pids_raw = imgs.cuda(), pids.cuda(), pids_raw.cuda()
 
     new_imgs, mask = perturb(imgs, G, D, train_or_test='train')
-    new_imgs = new_imgs.cuda()
-    mask = mask.cuda()
+    # new_imgs = new_imgs.cuda()
+    new_imgs = new_imgs
+    # mask = mask.cuda()
     # Fake Detection and Loss
     pred_fake_pool, _ = D(torch.cat((imgs, new_imgs.detach()), 1))
     loss_D_fake = criterionGAN(pred_fake_pool, False)        
@@ -260,12 +263,12 @@ def test(G, D, target_net, dataset, queryloader, galleryloader, epoch, use_gpu, 
   is_training = False
   if args.mode == 'test' and args.G_resume_dir:
     G_resume_dir, D_resume_dir = args.G_resume_dir, args.G_resume_dir.replace('G', 'D')
-    G_checkpoint, D_checkpoint = torch.load(G_resume_dir), torch.load(D_resume_dir)
+    G_checkpoint, D_checkpoint = torch.load(G_resume_dir,  map_location='cpu' ), torch.load(D_resume_dir,  map_location='cpu' )
     G_state_dict = G_checkpoint['state_dict'] if isinstance(G_checkpoint, dict) and 'state_dict' in G_checkpoint else G_checkpoint
     D_state_dict = D_checkpoint['state_dict'] if isinstance(D_checkpoint, dict) and 'state_dict' in D_checkpoint else D_checkpoint
 
-    G.load_state_dict(G_state_dict)
-    D.load_state_dict(D_state_dict)
+    G.load_state_dict(G_state_dict, strict=False)
+    D.load_state_dict(D_state_dict, strict=False)
     print("Sucessfully, loading {} and {}".format(G_resume_dir, D_resume_dir))
 
   with torch.no_grad():
@@ -353,11 +356,13 @@ def perturb(imgs, G, D, train_or_test='test'):
   n,c,h,w = imgs.size()
   delta = G(imgs)
   delta = L_norm(delta, train_or_test)
-  new_imgs = torch.add(imgs.cuda(), delta[0:imgs.size(0)].cuda())
+  # new_imgs = torch.add(imgs.cuda(), delta[0:imgs.size(0)].cuda())
+  new_imgs = torch.add(imgs, delta[0:imgs.size(0)])
 
   _, mask = D(torch.cat((imgs, new_imgs.detach()), 1))
   delta = delta * mask
-  new_imgs = torch.add(imgs.cuda(), delta[0:imgs.size(0)].cuda())
+  # new_imgs = torch.add(imgs.cuda(), delta[0:imgs.size(0)].cuda())
+  new_imgs = torch.add(imgs, delta[0:imgs.size(0)])
 
   for c in range(3):
     new_imgs.data[:,c,:,:] = new_imgs.data[:,c,:,:].clamp(new_imgs.data[:,c,:,:].min(), new_imgs.data[:,c,:,:].max()) # do clamping per channel
@@ -381,7 +386,8 @@ def L_norm(delta, mode='train'):
         l_inf_channel = delta[i,ci,:,:].data.abs().max()
         # l_inf_channel = torch.norm(delta[i,ci,:,:]).data
         mag_in_scaled_c = args.mag_in/(255.0*Imagenet_stddev[ci])
-        delta[i,ci,:,:].data *= np.minimum(1.0, mag_in_scaled_c / l_inf_channel.cpu()).float().cuda()
+        # delta[i,ci,:,:].data *= np.minimum(1.0, mag_in_scaled_c / l_inf_channel.cpu()).float().cuda()
+        delta[i, ci, :, :].data *= np.minimum(1.0, mag_in_scaled_c / l_inf_channel.cpu()).float()
       except IndexError:
         break
   return delta

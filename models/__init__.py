@@ -36,7 +36,7 @@ def init_model(name, pre_dir, *args, **kwargs):
   print("Initializing model: {}".format(name))
   net = __factory[name](*args, **kwargs)
   # load pretrained model
-  checkpoint = torch.load(pre_dir) # for Python 2
+  checkpoint = torch.load(pre_dir, map_location='cpu') # for Python 2
   # checkpoint = torch.load(pre_dir, encoding="latin1") # for Python 3
   state_dict = checkpoint['state_dict'] if isinstance(checkpoint, dict) and 'state_dict' in checkpoint else checkpoint
   change = False
@@ -52,7 +52,7 @@ def init_model(name, pre_dir, *args, **kwargs):
     for k, v in state_dict.items():
       name = k[7:] # remove 'module.' of dataparallel
       new_state_dict[name]=v
-  net.load_state_dict(new_state_dict)
+  net.load_state_dict(new_state_dict, strict=False)
   # freeze
   net.eval()
   net.volatile = True

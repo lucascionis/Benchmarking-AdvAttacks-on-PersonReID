@@ -1,0 +1,5 @@
+torchvision==0.2.1
+numpy
+matplotlib
+scipy
+h5py

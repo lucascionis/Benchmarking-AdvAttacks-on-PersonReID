@@ -139,7 +139,8 @@ class Mask(nn.Module):
 
   def forward(self, x, proposal):
     n,c,h,w = x.size()
-    if self.temperature == -1: return torch.ones((n,1,h,w)).cuda()
+    # if self.temperature == -1: return torch.ones((n,1,h,w)).cuda()
+    if self.temperature == -1: return torch.ones((n, 1, h, w))
     scale32 = proposal[2][3]
     scale16 = torch.cat((proposal[2][1], proposal[1][3]),1) if self.fused == 2 else proposal[1][3]
     scale8 = torch.cat((proposal[0][3], proposal[1][1], proposal[2][0]),1) if self.fused == 2 else proposal[0][3]
@@ -347,7 +348,7 @@ class GANLoss(nn.Module):
       create_label = ((self.fake_label_var is None) or
                       (self.fake_label_var.numel() != input.numel()))
       if create_label:
-        fake_tensor = self.Tensor(input.size()).fill_(self.fake_label)
+        fake_tensor = self.Tensor(input.cpu().size()).fill_(self.fake_label.cpu())
         self.fake_label_var = Variable(fake_tensor, requires_grad=False)
       target_tensor = self.fake_label_var
     return target_tensor
