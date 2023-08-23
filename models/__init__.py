@@ -11,7 +11,7 @@ from .IDE import *
 from .LSRO import *
 
 __factory = {
-  # 1. 
+  # 1.
   'hacnn': HACNN,
   'densenet121': DenseNet121,
   'ide': IDE,
@@ -21,7 +21,7 @@ __factory = {
   'mudeep': MuDeep,
   # 3.
   'cam': IDE,
-  'hhl': IDE, 
+  'hhl': IDE,
   'lsro': DenseNet121,
   'spgan': IDE,
 }
@@ -30,21 +30,21 @@ def get_names():
   return __factory.keys()
 
 def init_model(name, pre_dir, *args, **kwargs):
-  if name not in __factory.keys(): 
+  if name not in __factory.keys():
     raise KeyError("Unknown model: {}".format(name))
 
   print("Initializing model: {}".format(name))
   net = __factory[name](*args, **kwargs)
   # load pretrained model
-  checkpoint = torch.load(pre_dir, map_location='cpu') # for Python 2
-  # checkpoint = torch.load(pre_dir, encoding="latin1") # for Python 3
+  # checkpoint = torch.load(pre_dir, map_location='cpu') # for Python 2
+  checkpoint = torch.load(pre_dir, encoding="latin1") # for Python 3
   state_dict = checkpoint['state_dict'] if isinstance(checkpoint, dict) and 'state_dict' in checkpoint else checkpoint
   change = False
   for k, v in state_dict.items():
     if k[:6] == 'module':
       change = True
       break
-  if not change: 
+  if not change:
     new_state_dict = state_dict
   else:
     from collections import OrderedDict
