@@ -70,6 +70,8 @@ parser.add_argument('--usevis', action='store_true', default=False, help='whethe
 
 # Custom arguments
 parser.add_argument('--max_batches', type=int, default=10, help='maximum number of batches to process')
+parser.add_argument('--query_batch', type=int, default=1, help='size of query batch')
+parser.add_argument('--gallery_batch', type=int, default=32, help='size of gallery batch')
 parser.add_argument('--top_k', type=int, default=20, help='maximum number of top k values to visualize')
 
 args = parser.parse_args()
@@ -123,11 +125,12 @@ def main(opt):
                                  sampler=AttrPool(dataset.train, args.dataset, attr_matrix, attr_list, sample_num=16),
                                  batch_size=args.train_batch, num_workers=opt['workers'], pin_memory=pin_memory,
                                  drop_last=True)
-    queryloader = DataLoader(ImageDataset(dataset.query, transform=opt['transform_test']), batch_size=args.test_batch,
+    queryloader = DataLoader(ImageDataset(dataset.query, transform=opt['transform_test']), batch_size=args.query_batch,
                              shuffle=False, num_workers=opt['workers'], pin_memory=pin_memory, drop_last=False)
     galleryloader = DataLoader(ImageDataset(dataset.gallery, transform=opt['transform_test']),
-                               batch_size=args.test_batch, shuffle=False, num_workers=opt['workers'],
+                               batch_size=args.gallery_batch, shuffle=False, num_workers=opt['workers'],
                                pin_memory=pin_memory, drop_last=False)
+
 
     ### Prepare criterion ###
     if args.ak_type < 0:
@@ -268,7 +271,7 @@ def extract_and_perturb(loader, G, D, target_net, use_gpu, query_or_gallery, is_
             if is_test:
                 save_img(ls, pids, camids, epoch, batch_idx)
 
-        if batch_idx >= max_batches:
+        if batch_idx+1 >= max_batches:
             break
 
     f = torch.cat(f, 0)
