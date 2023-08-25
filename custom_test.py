@@ -69,6 +69,7 @@ parser.add_argument('--eval_freq', type=int, default=1, help="eval frequency")
 parser.add_argument('--usevis', action='store_true', default=False, help='whether to save vis')
 
 # Custom arguments
+parser.add_argument('--max_batches', type=int, default=10, help='maximum number of batches to process')
 parser.add_argument('--top_k', type=int, default=20, help='maximum number of top k values to visualize')
 
 args = parser.parse_args()
@@ -176,6 +177,8 @@ def main(opt):
 def test(G, D, target_net, dataset, queryloader, galleryloader, epoch, use_gpu, is_test=False, ranks=[1, 5, 10, 20]):
     global is_training
     is_training = False
+
+    max_batches = int(args.max_batches)
     if args.mode == 'test' and args.G_resume_dir:
         G_resume_dir, D_resume_dir = args.G_resume_dir, args.G_resume_dir.replace('G', 'D')
         G_checkpoint, D_checkpoint = torch.load(G_resume_dir, map_location='cpu'), torch.load(D_resume_dir,
@@ -192,17 +195,16 @@ def test(G, D, target_net, dataset, queryloader, galleryloader, epoch, use_gpu, 
     with torch.no_grad():
         qf, lqf, new_qf, new_lqf, q_pids, q_camids = extract_and_perturb(queryloader, G, D, target_net, use_gpu,
                                                                          query_or_gallery='query', is_test=is_test,
-                                                                         epoch=epoch)
+                                                                         epoch=epoch, max_batches=max_batches)
         gf, lgf, g_pids, g_camids = extract_and_perturb(galleryloader, G, D, target_net, use_gpu,
-                                                        query_or_gallery='gallery', is_test=is_test, epoch=epoch)
+                                                        query_or_gallery='gallery', is_test=is_test, epoch=epoch, max_batches=max_batches)
 
         if args.ak_type > 0:
             distmat, hits, ignore_list = make_results(new_qf, gf, new_lqf, lgf, q_pids, g_pids, q_camids, g_camids,
                                                       args.targetmodel, args.ak_type, attr_matrix, args.dataset,
                                                       attr_list)
             print("Hits rate, Rank-{}: {:.1%}, Rank-{}: {:.1%}, Rank-{}: {:.1%}, Rank-{}: {:.1%}".format(ranks[0], hits[
-                ranks[0] - 1], ranks[1], hits[ranks[1] - 1], ranks[2], hits[ranks[2] - 1], ranks[3], hits[ranks[
-                                                                                                              3] - 1]))
+                ranks[0] - 1], ranks[1], hits[ranks[1] - 1], ranks[2], hits[ranks[2] - 1], ranks[3], hits[ranks[3] - 1]))
             if not is_test:
                 return hits
 
