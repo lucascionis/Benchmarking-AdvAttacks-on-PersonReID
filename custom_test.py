@@ -269,7 +269,7 @@ def extract_and_perturb(loader, G, D, target_net, use_gpu, query_or_gallery, is_
                 save_img(ls, pids, camids, epoch, batch_idx)
 
         if batch_idx >= max_batches:
-            return
+            break
 
     f = torch.cat(f, 0)
     if not lf == []: lf = torch.cat(lf, 0)
