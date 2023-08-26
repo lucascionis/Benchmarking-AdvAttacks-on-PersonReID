@@ -83,9 +83,11 @@ def main():
                                             cuhk03_labeled=opt['cuhk03_labeled'],
                                             cuhk03_classic_split=opt['cuhk03_classic_split'])
 
+    '''
     galleryloader = DataLoader(ImageDataset(dataset.gallery, transform=opt['transform_test']),
                                batch_size=test_batch, shuffle=False, num_workers=opt['workers'],
                                pin_memory=torch.cuda.is_available(), drop_last=False)
+    '''
 
     # load pretraind model
     # model = models.build_model(name=model, num_classes=dataset.num_train_pids)
@@ -103,6 +105,13 @@ def main():
 
     for query_idxs in queries_idxs:
         print(query_idxs)
+        # each query_idxs is a numpy array with indices from the gallery
+
+        # create a subset of dataset galley using the indices
+
+        # create a dataloader using the subset
+
+        # perform re-training of the model using the dataloader
 
 
 
