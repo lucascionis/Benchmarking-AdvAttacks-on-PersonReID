@@ -226,7 +226,6 @@ def test(G, D, target_net, dataset, queryloader, galleryloader, epoch, use_gpu, 
                     new_cmc[ranks[2] - 1], ranks[3], new_cmc[ranks[3] - 1]))
                 if args.usevis:
                     visualize_ranked_results(distmat, dataset, save_dir=osp.join(vis_dir, 'origin_results'), topk=20)
-                    # for now I can simply visualize original results
                     # visualize_ranked_results(new_distmat, dataset, save_dir=osp.join(vis_dir, 'polluted_results'),topk=20)
             else:
                 _, new_cmc, new_mAP = make_results(new_qf, gf, new_lqf, lgf, q_pids, g_pids, q_camids, g_camids,
