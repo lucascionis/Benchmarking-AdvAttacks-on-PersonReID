@@ -242,7 +242,7 @@ def visualize_ranked_results(distmat, dataset, save_dir, topk=20):
 
         # saving top-k indices for current query
         q_gindices = indices[q_idx, :]
-        q_gindices_path = osp.join(qimg_path, 'q_{}_idxs.pkl'.format(str(q_idx + 1).zfill(5)))
+        q_gindices_path = osp.join(qdir, 'q_{}_idxs.pkl'.format(str(q_idx + 1).zfill(5)))
         with open(q_gindices_path, 'wb') as file:
             pickle.dump(q_gindices, file)
 
