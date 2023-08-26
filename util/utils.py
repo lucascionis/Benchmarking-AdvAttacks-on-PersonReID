@@ -11,6 +11,7 @@ from PIL import Image
 import matplotlib
 import numpy as np
 from numpy import array, argmin
+import pickle
 
 import torch
 
@@ -238,6 +239,13 @@ def visualize_ranked_results(distmat, dataset, save_dir, topk=20):
         cp_img_to(qimg_path, qdir, rank=0, prefix='query')
 
         rank_idx = 1
+
+        # saving top-k indices for current query
+        q_gindices = indices[q_idx, :]
+        q_gindices_path = osp.join(qimg_path, 'q_{}_idxs.pkl'.format(str(q_idx + 1).zfill(5)))
+        with open(q_gindices_path, 'wb') as file:
+            pickle.dump(q_gindices, file)
+
         for g_idx in indices[q_idx, :]:
             gimg_path, gpid, gcamid = dataset.gallery[g_idx][:-1]
             invalid = (qpid == gpid) & (qcamid == gcamid)
