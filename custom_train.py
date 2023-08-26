@@ -1,8 +1,14 @@
 import argparse
 import os
 import glob
+import pickle
 
+import torch
 import torchreid
+from torchreid import models, metrics
+from torchreid.losses import CrossEntropyLoss, DeepSupervision
+
+import models
 
 from torch.utils.data import DataLoader
 from util import data_manager
@@ -18,20 +24,62 @@ parser.add_argument('--test_batch', default=32, type=int, help="test batch size"
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+def check_freezen(net, need_modified=False, after_modified=None):
+    # print(net)
+    cc = 0
+    for child in net.children():
+        for param in child.parameters():
+            if need_modified: param.requires_grad = after_modified
+            # if param.requires_grad: print('child', cc , 'was active')
+            # else: print('child', cc , 'was frozen')
+        cc += 1
+
+
+def parse_data_for_train(self, data):
+    imgs = data['img']
+    pids = data['pid']
+    return imgs, pids
+
+
+def compute_loss(criterion, outputs, targets):
+    if isinstance(outputs, (tuple, list)):
+        loss = DeepSupervision(criterion, outputs, targets)
+    else:
+        loss = criterion(outputs, targets)
+    return loss
+
+def train_model(model, data, optimizer, criterion):
+    imgs, pids = parse_data_for_train(data)
+
+    imgs.to(device)
+    pids.to(device)
+
+    outputs = model(imgs)
+    loss = compute_loss(criterion, outputs, pids)
+
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+    loss_summary = {
+        'loss': loss.item(),
+        'acc': metrics.accuracy(outputs, pids)[0].item()
+    }
+
+    return loss_summary
+
 def main():
     args = parser.parse_args()
-    model = args.model
+    model = args.target_model
     weight_path = args.pre_dir
     queries_path = args.queries_dir
     test_batch = args.test_batch
+    dataset = 'market1501'
 
-    opt = get_opts(args.targetmodel)
-
-    # load pretraind model
-    torchreid.utils.load_pretrained_weights(model, weight_path)
+    opt = get_opts(model)
 
     # load market151 dataset
-    dataset = data_manager.init_img_dataset(root=args.root, name=args.dataset, split_id=opt['split_id'],
+    dataset = data_manager.init_img_dataset(root='data', name=dataset, split_id=opt['split_id'],
                                             cuhk03_labeled=opt['cuhk03_labeled'],
                                             cuhk03_classic_split=opt['cuhk03_classic_split'])
 
@@ -39,11 +87,22 @@ def main():
                                batch_size=test_batch, shuffle=False, num_workers=opt['workers'],
                                pin_memory=torch.cuda.is_available(), drop_last=False)
 
+    # load pretraind model
+    # model = models.build_model(name=model, num_classes=dataset.num_train_pids)
+    # torchreid.utils.load_pretrained_weights(model, weight_path)
+    target_net = models.init_model(name=model, pre_dir=weight_path, num_classes=dataset.num_train_pids)
+    check_freezen(target_net, need_modified=True, after_modified=True)
+
+
     # for each query load the indices of the top-k predictions
     queries_idxs = []
     q_path = os.path.join(queries_path, '**/*.pkl')
     for query_idxs in glob.glob(q_path, recursive=True):
-        queries_idxs.append(query_idxs)
+        with open(query_idxs, 'rb') as file:
+            queries_idxs.append(pickle.load(file))
+
+    for query_idxs in queries_idxs:
+        print(query_idxs)
 
 
 
