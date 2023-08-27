@@ -11,10 +11,10 @@ from torchreid.losses import CrossEntropyLoss, DeepSupervision
 import models
 
 from torch.utils.data import DataLoader
+from torch.utils.data import Subset
 from util import data_manager
 from util.dataset_loader import ImageDataset
 from opts import get_opts
-
 
 parser = argparse.ArgumentParser(description='adversarial attack')
 parser.add_argument('--target_model', type=str, default='aligned')
@@ -23,6 +23,7 @@ parser.add_argument('--queries_dir', type=str, default='./queries', help='path t
 parser.add_argument('--test_batch', default=32, type=int, help="test batch size")
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def check_freezen(net, need_modified=False, after_modified=None):
     # print(net)
@@ -48,6 +49,7 @@ def compute_loss(criterion, outputs, targets):
         loss = criterion(outputs, targets)
     return loss
 
+
 def train_model(model, data, optimizer, criterion):
     imgs, pids = parse_data_for_train(data)
 
@@ -67,6 +69,7 @@ def train_model(model, data, optimizer, criterion):
     }
 
     return loss_summary
+
 
 def main():
     args = parser.parse_args()
@@ -95,7 +98,6 @@ def main():
     target_net = models.init_model(name=model, pre_dir=weight_path, num_classes=dataset.num_train_pids)
     check_freezen(target_net, need_modified=True, after_modified=True)
 
-
     # for each query load the indices of the top-k predictions
     queries_idxs = []
     q_path = os.path.join(queries_path, '**/*.pkl')
@@ -103,17 +105,16 @@ def main():
         with open(query_idxs, 'rb') as file:
             queries_idxs.append(pickle.load(file))
 
+    gallery_loaders = []
+    dataset.gallery = [elem[:-1] for elem in dataset.gallery]
     for query_idxs in queries_idxs:
-        print(query_idxs)
         # each query_idxs is a numpy array with indices from the gallery
-
         # create a subset of dataset galley using the indices
-
+        g_subset = Subset(dataset.gallery, query_idxs)
         # create a dataloader using the subset
+        g_loader = DataLoader(g_subset, batch_size=1, shuffle=False, num_workers=2)
+        gallery_loaders.append(g_loader)
 
-        # perform re-training of the model using the dataloader
 
-
-
-if __name__=='__main__':
+if __name__ == '__main__':
     main()
