@@ -7,6 +7,7 @@ import torch
 import torchreid
 from torchreid import models, metrics
 from torchreid.losses import CrossEntropyLoss, DeepSupervision
+# import torch.nn as nn
 
 import models
 
@@ -36,9 +37,9 @@ def check_freezen(net, need_modified=False, after_modified=None):
         cc += 1
 
 
-def parse_data_for_train(self, data):
-    imgs = data['img']
-    pids = data['pid']
+def parse_data_for_train(data):
+    imgs = data[0]
+    pids = data[1]
     return imgs, pids
 
 
@@ -53,11 +54,15 @@ def compute_loss(criterion, outputs, targets):
 def train_model(model, data, optimizer, criterion):
     imgs, pids = parse_data_for_train(data)
 
-    imgs.to(device)
-    pids.to(device)
+    imgs = imgs.to(device)
+    pids = pids.to(device)
 
-    outputs = model(imgs)
+    ls = model(imgs, is_training=True)
+    if len(ls) == 1: outputs = ls[0]
+    if len(ls) == 2: outputs, features = ls
+    if len(ls) == 3: outputs, features, local_features = ls
     loss = compute_loss(criterion, outputs, pids)
+    # loss = criterion(outputs, pids)
 
     optimizer.zero_grad()
     loss.backward()
@@ -96,7 +101,27 @@ def main():
     # model = models.build_model(name=model, num_classes=dataset.num_train_pids)
     # torchreid.utils.load_pretrained_weights(model, weight_path)
     target_net = models.init_model(name=model, pre_dir=weight_path, num_classes=dataset.num_train_pids)
-    check_freezen(target_net, need_modified=True, after_modified=True)
+    # check_freezen(target_net, need_modified=True, after_modified=True)
+    target_net.to(device)
+    target_net.train()
+
+    optimizer = torchreid.optim.build_optimizer(
+        target_net,
+        optim="adam",
+        lr=0.0003
+    )
+
+    scheduler = torchreid.optim.build_lr_scheduler(
+        optimizer,
+        lr_scheduler="single_step",
+        stepsize=20
+    )
+
+    criterion = CrossEntropyLoss(
+        num_classes=dataset.num_train_pids,
+        use_gpu=torch.cuda.is_available,
+        label_smooth=True
+    )
 
     # for each query load the indices of the top-k predictions
     queries_idxs = []
@@ -106,14 +131,22 @@ def main():
             queries_idxs.append(pickle.load(file))
 
     gallery_loaders = []
-    dataset.gallery = [elem[:-1] for elem in dataset.gallery]
     for query_idxs in queries_idxs:
         # each query_idxs is a numpy array with indices from the gallery
         # create a subset of dataset galley using the indices
         g_subset = Subset(dataset.gallery, query_idxs)
         # create a dataloader using the subset
-        g_loader = DataLoader(g_subset, batch_size=1, shuffle=False, num_workers=2)
+        # g_loader = DataLoader(g_subset, batch_size=1, shuffle=False, num_workers=2)
+        g_loader = DataLoader(ImageDataset(g_subset, transform=opt['transform_train']),
+                               batch_size=5, shuffle=False, num_workers=opt['workers'],
+                               drop_last=False)
         gallery_loaders.append(g_loader)
+
+    for g_loader in gallery_loaders:
+        for idx, batch in enumerate(g_loader):
+            loss_summary = train_model(target_net, batch, optimizer, criterion)
+            print(loss_summary)
+        # eventually save this as model_best_queryID.pth
 
 
 if __name__ == '__main__':
