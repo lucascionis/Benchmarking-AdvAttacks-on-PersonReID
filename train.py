@@ -227,8 +227,8 @@ def train(epoch, G, D, target_net, criterionGAN, clf_criterion, metric_criterion
         pids.to(device)
 
         new_imgs, mask = perturb(imgs, G, D, train_or_test='train')
-        new_imgs.to(device)
-        mask.to(device)
+        new_imgs = new_imgs.to(device)
+        mask = mask.to(device)
         # new_imgs = new_imgs.cuda()
 
         # mask = mask.cuda()
