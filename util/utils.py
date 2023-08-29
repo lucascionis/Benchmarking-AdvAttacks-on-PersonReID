@@ -243,12 +243,12 @@ def visualize_ranked_results(distmat, dataset, save_dir, topk=20):
         # saving top-k indices for current query
         q_gindices = np.dstack((indices[q_idx, :topk], np.zeros(topk))).squeeze(0)
 
-        for i, g_idx in enumerate(indices[q_idx, :]):
+        for g_idx in indices[q_idx, :]:
             gimg_path, gpid, gcamid = dataset.gallery[g_idx][:-1]
             invalid = (qpid == gpid) & (qcamid == gcamid)
 
             # check if gallery is the same as query, 1 if true, 0 otherwise
-            q_gindices[i, 1] = (qpid == gpid)
+            q_gindices[rank_idx-1, 1] = (qpid == gpid)
             if not invalid:
                 cp_img_to(gimg_path, qdir, rank=rank_idx, prefix='gallery')
                 rank_idx += 1
