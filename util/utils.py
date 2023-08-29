@@ -241,19 +241,22 @@ def visualize_ranked_results(distmat, dataset, save_dir, topk=20):
         rank_idx = 1
 
         # saving top-k indices for current query
-        q_gindices = indices[q_idx, :]
-        q_gindices_path = osp.join(qdir, 'q_{}_idxs.pkl'.format(str(q_idx + 1).zfill(5)))
-        with open(q_gindices_path, 'wb') as file:
-            pickle.dump(q_gindices, file)
+        q_gindices = np.dstack((indices[q_idx, :topk], np.zeros(topk))).squeeze(0)
 
-        for g_idx in indices[q_idx, :]:
+        for i, g_idx in enumerate(indices[q_idx, :]):
             gimg_path, gpid, gcamid = dataset.gallery[g_idx][:-1]
             invalid = (qpid == gpid) & (qcamid == gcamid)
+
+            # check if gallery is the same as query, 1 if true, 0 otherwise
+            q_gindices[i, 1] = (qpid == gpid)
             if not invalid:
                 cp_img_to(gimg_path, qdir, rank=rank_idx, prefix='gallery')
                 rank_idx += 1
                 if rank_idx > topk:
                     break
+        q_gindices_path = osp.join(qdir, 'q_{}_idxs.pkl'.format(str(q_idx + 1).zfill(5)))
+        with open(q_gindices_path, 'wb') as file:
+            pickle.dump(q_gindices, file)
 
 
 def cp_img_to(src, dst, rank, prefix):
