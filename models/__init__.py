@@ -52,8 +52,9 @@ def init_model(name, pre_dir, *args, **kwargs):
     for k, v in state_dict.items():
       name = k[7:] # remove 'module.' of dataparallel
       new_state_dict[name]=v
+
   net.load_state_dict(new_state_dict, strict=False)
   # freeze
-  net.eval()
-  net.volatile = True
+  # net.eval()
+  # net.volatile = True
   return net
