@@ -22,6 +22,7 @@ parser.add_argument('--target_model', type=str, default='aligned')
 parser.add_argument('--pre_dir', type=str, default='./models', help='path to the model')
 parser.add_argument('--queries_dir', type=str, default='./queries', help='path to be attacked model')
 parser.add_argument('--train_batch', default=10, type=int, help="train batch size")
+parser.add_argument('--train_epochs', default=0, type=int, help="train epochs")
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -33,20 +34,21 @@ def DeepSupervision(criterion, xs, labels):
     return loss
 
 
-def train_model(model, data, labels, optimizer, criterion):
+def train_model(model, data, labels, optimizer, criterion, epochs=0):
     imgs, _, _, _ = data
     imgs = imgs.to(device)
     labels = torch.tensor(labels, dtype=torch.int64).to(device)
 
-    ls = model(imgs, is_training=True)
-    if len(ls) == 1: outputs = ls[0]
-    if len(ls) == 2: outputs, features = ls
-    if len(ls) == 3: outputs, features, local_features = ls
-    loss = DeepSupervision(criterion, outputs, labels)
+    for e in range(epochs):
+        ls = model(imgs, is_training=True)
+        if len(ls) == 1: outputs = ls[0]
+        if len(ls) == 2: outputs, features = ls
+        if len(ls) == 3: outputs, features, local_features = ls
+        loss = DeepSupervision(criterion, outputs, labels)
 
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
     loss_summary = {
         'loss': loss.item(),
@@ -62,6 +64,7 @@ def main():
     weight_path = args.pre_dir
     queries_path = args.queries_dir
     train_batch = args.train_batch
+    train_epochs = args.train_epochs
     dataset_name = 'market1501'
 
     opt = get_opts(model)
@@ -123,7 +126,7 @@ def main():
 
         for idx, batch in enumerate(loader):
             labels_batch = labels[idx * train_batch:(idx + 1) * train_batch]
-            loss_summary = train_model(target_net_copy, batch, labels_batch, optimizer, criterion)
+            loss_summary = train_model(target_net_copy, batch, labels_batch, optimizer, criterion, epochs=train_epochs)
             print(loss_summary)
 
         # Saving the trained model
