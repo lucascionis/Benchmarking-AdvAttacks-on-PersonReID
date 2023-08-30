@@ -26,16 +26,6 @@ parser.add_argument('--train_batch', default=10, type=int, help="train batch siz
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def check_freezen(net, need_modified=False, after_modified=None):
-    # print(net)
-    cc = 0
-    for child in net.children():
-        for param in child.parameters():
-            if need_modified: param.requires_grad = after_modified
-            # if param.requires_grad: print('child', cc , 'was active')
-            # else: print('child', cc , 'was frozen')
-        cc += 1
-
 def DeepSupervision(criterion, xs, labels):
     loss = 0.
     for x in xs:
@@ -97,12 +87,6 @@ def main():
     target_net.to(device)
     target_net.train()
 
-    optimizer = torchreid.optim.build_optimizer(
-        target_net,
-        optim="adam",
-        lr=0.0003
-    )
-
     criterion = torchreid.losses.CrossEntropyLoss(
         num_classes=2,
         use_gpu=torch.cuda.is_available,
@@ -126,21 +110,30 @@ def main():
 
     # Train the model using each gallery loader data
     print("Training re-id model with gallery images...")
-    for g_l in gallery_loaders:
+    for idx, g_l in enumerate(gallery_loaders):
+        target_net_copy = copy.deepcopy(target_net)
+        optimizer = torchreid.optim.build_optimizer(
+            target_net_copy,
+            optim="adam",
+            lr=0.0003
+        )
+
         loader = g_l[0]
         labels = g_l[1]
 
         for idx, batch in enumerate(loader):
             labels_batch = labels[idx * train_batch:(idx + 1) * train_batch]
-            loss_summary = train_model(target_net, batch, labels_batch, optimizer, criterion)
+            loss_summary = train_model(target_net_copy, batch, labels_batch, optimizer, criterion)
             print(loss_summary)
 
-    # Saving the trained model
-    print("Saving trained model...")
-    target_net.classifier_local = _target_net_cl
+        # Saving the trained model
+        print("Saving trained model for query {}...".format(idx))
+        target_net_copy.classifier_local = _target_net_cl
 
-    file_name = 'retrained_{}'.format(model)
-    torch.save(target_net.state_dict(), '/content/drive/MyDrive/adv_reid/retrained/{}.pth.tar'.format(file_name))
+        file_name = 'retrained_{}_q{}'.format(model, idx)
+        torch.save(target_net_copy.state_dict(), '/content/drive/MyDrive/adv_reid/retrained/{}.pth.tar'.format(file_name))
+
+        del target_net_copy, optimizer
 
 if __name__ == '__main__':
     main()
