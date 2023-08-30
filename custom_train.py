@@ -131,7 +131,9 @@ def main():
         target_net_copy.classifier_local = _target_net_cl
 
         file_name = 'retrained_{}_q{}'.format(model, idx)
-        torch.save(target_net_copy.state_dict(), '/content/drive/MyDrive/adv_reid/retrained/{}.pth.tar'.format(file_name))
+        if not os.path.exists('./retrained'):
+            os.mkdir('./retrained')
+        torch.save(target_net_copy.state_dict(), './retrained/{}.pth.tar'.format(file_name))
 
         del target_net_copy, optimizer
 
