@@ -110,7 +110,7 @@ def main():
 
     # Train the model using each gallery loader data
     print("Training re-id model with gallery images...")
-    for idx, g_l in enumerate(gallery_loaders):
+    for gl_idx, g_l in enumerate(gallery_loaders):
         target_net_copy = copy.deepcopy(target_net)
         optimizer = torchreid.optim.build_optimizer(
             target_net_copy,
@@ -127,10 +127,10 @@ def main():
             print(loss_summary)
 
         # Saving the trained model
-        print("Saving trained model for query {}...".format(idx))
+        print("Saving trained model for query {}...".format(gl_idx))
         target_net_copy.classifier_local = _target_net_cl
 
-        file_name = 'retrained_{}_q{}'.format(model, idx)
+        file_name = 'retrained_{}_q{}'.format(model, gl_idx)
         if not os.path.exists('./retrained'):
             os.mkdir('./retrained')
         torch.save(target_net_copy.state_dict(), './retrained/{}.pth.tar'.format(file_name))
