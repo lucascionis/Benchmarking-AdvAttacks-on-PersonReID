@@ -138,6 +138,8 @@ def main(opt):
 
     ### Prepare pretrained model ###
     target_net = models.init_model(name=args.targetmodel, pre_dir=pre_dir, num_classes=dataset.num_train_pids)
+    target_net.eval()
+    target_net.volatile = True
     check_freezen(target_net, need_modified=True, after_modified=False)
 
     ### Prepare main net ###
